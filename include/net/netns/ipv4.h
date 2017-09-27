@@ -131,6 +131,7 @@ struct netns_ipv4 {
 	int sysctl_tcp_default_init_rwnd;
 	struct inet_timewait_death_row tcp_death_row;
 	int sysctl_max_syn_backlog;
+	int sysctl_tcp_fastopen;
 
 	#ifdef OPLUS_BUG_STABILITY
 	int sysctl_tcp_random_timestamp;
