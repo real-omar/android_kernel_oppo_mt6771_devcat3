@@ -321,7 +321,7 @@ out:
 	return NULL;
 }
 
-/**
+/*
  *	streamzap_probe
  *
  *	Called by usb-core to associated with a candidate device
@@ -450,7 +450,7 @@ free_sz:
 	return retval;
 }
 
-/**
+/*
  * streamzap_disconnect
  *
  * Called by the usb core when the device is removed from the system.
