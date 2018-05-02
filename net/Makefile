@@ -85,6 +85,7 @@ obj-y				+= l3mdev/
 endif
 obj-$(CONFIG_QRTR)		+= qrtr/
 obj-$(CONFIG_NET_NCSI)		+= ncsi/
+obj-$(CONFIG_XDP_SOCKETS)	+= xdp/
 
 #ifdef OPLUS_FEATURE_DATA_EVAL
 obj-y				+= oplus_kernel2user/
@@ -107,3 +108,9 @@ endif #/* OPLUS_FEATURE_DHCP */
 #ifdef OPLUS_FEATURE_NWPOWER
 obj-y				+= oplus_nwpower/
 #endif /* OPLUS_FEATURE_NWPOWER */
+
+#ifdef OPLUS_FEATURE_APP_MONITOR
+#Xiong.Li@TECH.CN.WiFi.Network.2022890,2019/06/14,
+#Add for apps network monitors
+obj-y				+= oplus_apps_monitor/
+#endif /* OPLUS_FEATURE_APP_MONITOR */
