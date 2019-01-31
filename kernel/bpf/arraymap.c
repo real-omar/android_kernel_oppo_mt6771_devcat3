@@ -281,6 +281,11 @@ static int array_map_update_elem(struct bpf_map *map, void *key, void *value,
 		       array->elem_size * (index & array->index_mask),
 		       value, map->value_size);
 	}
+	else
+		copy_map_value(map,
+			       array->value +
+			       array->elem_size * (index & array->index_mask),
+			       value);
 	return 0;
 }
 
