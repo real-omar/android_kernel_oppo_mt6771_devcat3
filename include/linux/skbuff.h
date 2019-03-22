@@ -4186,6 +4186,26 @@ static inline bool skb_is_gso_tcp(const struct sk_buff *skb)
 	return skb_shinfo(skb)->gso_type & (SKB_GSO_TCPV4 | SKB_GSO_TCPV6);
 }
 
+/* Note: Should be called only if skb_is_gso(skb) is true */
+static inline void skb_increase_gso_size(struct skb_shared_info *shinfo,
+					 u16 increment)
+{
+	if (shinfo->gso_size == GSO_BY_FRAGS)
+		return;
+
+	shinfo->gso_size += increment;
+}
+
+/* Note: Should be called only if skb_is_gso(skb) is true */
+static inline void skb_decrease_gso_size(struct skb_shared_info *shinfo,
+					 u16 decrement)
+{
+	if (shinfo->gso_size == GSO_BY_FRAGS)
+		return;
+
+	shinfo->gso_size -= decrement;
+}
+
 static inline void skb_gso_reset(struct sk_buff *skb)
 {
 	skb_shinfo(skb)->gso_size = 0;
