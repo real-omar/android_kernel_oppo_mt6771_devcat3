@@ -359,7 +359,7 @@ static void mtk_nanohub_moving_average(union SCP_SENSOR_HUB_DATA *rsp)
 		if (READ_ONCE(rtc_compensation_suspend))
 			return;
 	}
-	ap_now_time = ktime_get_boot_ns();
+	ap_now_time = ktime_get_boottime_ns();
 	arch_counter = arch_counter_get_cntvct();
 	scp_raw_time = rsp->notify_rsp.scp_timestamp;
 	ipi_transfer_time = arch_counter_to_ns(arch_counter -
@@ -926,7 +926,7 @@ static int mtk_nanohub_send_timestamp_wake_locked(void)
 
 	/* send_timestamp_to_hub is process context, disable irq is safe */
 	local_irq_disable();
-	now_time = ktime_get_boot_ns();
+	now_time = ktime_get_boottime_ns();
 	arch_counter = arch_counter_get_cntvct();
 	local_irq_enable();
 	req.set_config_req.sensorType = 0;
@@ -2473,12 +2473,12 @@ static int mtk_nanohub_pm_event(struct notifier_block *notifier,
 {
 	switch (pm_event) {
 	case PM_POST_SUSPEND:
-		pr_debug("resume ap boottime=%lld\n", ktime_get_boot_ns());
+		pr_debug("resume ap boottime=%lld\n", ktime_get_boottime_ns());
 		WRITE_ONCE(rtc_compensation_suspend, false);
 		mtk_nanohub_send_timestamp_to_hub();
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
-		pr_debug("suspend ap boottime=%lld\n", ktime_get_boot_ns());
+		pr_debug("suspend ap boottime=%lld\n", ktime_get_boottime_ns());
 		WRITE_ONCE(rtc_compensation_suspend, true);
 		return NOTIFY_DONE;
 	default:
@@ -2525,7 +2525,7 @@ static int mtk_nanohub_create_manager(void)
 		return err;
 	}
 
-	atomic64_set(&device->mtk_nanohub_ready_time, ktime_get_boot_ns());
+	atomic64_set(&device->mtk_nanohub_ready_time, ktime_get_boottime_ns());
 	atomic_set(&device->mtk_nanohub_ready, 1);
 	return err;
 }
@@ -2585,7 +2585,7 @@ static ssize_t state_show(struct device_driver *ddri, char *buf)
 	const char *status =
 		atomic_read(&device->mtk_nanohub_ready) ? "ready" : "unready";
 	int64_t ready_time = atomic64_read(&device->mtk_nanohub_ready_time);
-	int64_t now_time = ktime_get_boot_ns();
+	int64_t now_time = ktime_get_boottime_ns();
 
 	return snprintf(buf, PAGE_SIZE, "%s,%lld,%lld\n",
 		status, ready_time, now_time);
