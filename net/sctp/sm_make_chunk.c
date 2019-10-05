@@ -2160,9 +2160,9 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
 			return SCTP_IERROR_ABORT;
 		break;
 
-case SCTP_PARAM_SET_PRIMARY:
-    if (!ep->asconf_enable)
-        goto unhandled;
+	case SCTP_PARAM_SET_PRIMARY:
+		if (!ep->asconf_enable)
+			goto unhandled;
 
     if (ntohs(param.p->length) < sizeof(struct sctp_addip_param) +
                                  sizeof(struct sctp_paramhdr)) {
