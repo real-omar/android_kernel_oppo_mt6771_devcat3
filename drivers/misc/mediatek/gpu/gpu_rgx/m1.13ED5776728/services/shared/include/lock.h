@@ -114,7 +114,7 @@ static inline IMG_INT OSAtomicOr(ATOMIC_T *pCounter, IMG_INT iVal)
 }
 
 #define OSAtomicAdd(pCounter, incr) atomic_add_return(incr,pCounter)
-#define OSAtomicAddUnless(pCounter, incr, test) __atomic_add_unless(pCounter,incr,test)
+#define OSAtomicAddUnless(pCounter, incr, test) atomic_fetch_add_unless(pCounter,incr,test)
 
 #define OSAtomicSubtract(pCounter, incr) atomic_add_return(-(incr),pCounter)
 #define OSAtomicSubtractUnless(pCounter, incr, test) OSAtomicAddUnless(pCounter, -(incr), test)
