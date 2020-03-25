@@ -57,6 +57,7 @@ struct netpoll_info;
 struct device;
 struct phy_device;
 struct dsa_switch_tree;
+struct macsec_ops;
 
 /* 802.11 specific */
 struct wireless_dev;
