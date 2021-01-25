@@ -981,11 +981,13 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 {
 	struct inode *inode = iocb->ki_filp->f_mapping->host;
 	struct fuse_conn *fc = get_fuse_conn(inode);
+	struct fuse_file *ff = iocb->ki_filp->private_data;
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
 	struct fuse_file *ff = iocb->ki_filp->private_data;
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	ssize_t ret_val;
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
-
+	
 	if (fuse_is_bad(inode))
 		return -EIO;
 
@@ -1001,6 +1003,8 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		if (err)
 			return err;
 	}
+	if (ff->passthrough.filp)
+		return fuse_passthrough_read_iter(iocb, to);
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
 	if (ff && ff->rw_lower_file)
 		ret_val = fuse_shortcircuit_read_iter(iocb, to);
@@ -1256,6 +1260,10 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct inode *inode = mapping->host;
 	ssize_t err;
 	loff_t endbyte = 0;
+	struct fuse_file *ff = file->private_data;
+
+	if (ff->passthrough.filp)
+		return fuse_passthrough_write_iter(iocb, from);
 
 	if (fuse_is_bad(inode))
 		return -EIO;
