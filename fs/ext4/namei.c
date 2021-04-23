@@ -3854,17 +3854,15 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de, NULL,
 				&old.lblk);
-	if (IS_ERR(old.bh))
-		return PTR_ERR(old.bh);
-	/*
-	 *  Check for inode number is _not_ due to possible IO errors.
-	 *  We might rmdir the source, keep it as pwd of some process
-	 *  and merrily kill the link to whatever was created under the
-	 *  same name. Goodbye sticky bit ;-<
-	 */
-	retval = -ENOENT;
 	if (!old.bh || le32_to_cpu(old.de->inode) != old.inode->i_ino)
 		goto release_bh;
+
+	if ((old.dir != new.dir) &&
+	    ext4_encrypted_inode(new.dir) &&
+	    !fscrypt_has_permitted_context(new.dir, old.inode)) {
+		retval = -EXDEV;
+		goto release_bh;
+	}
 
 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
 				 &new.de, &new.inlined, NULL);
