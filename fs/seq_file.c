@@ -28,6 +28,7 @@ static void *seq_buf_alloc(unsigned long size)
 {
 	if (unlikely(size > MAX_RW_COUNT))
 		return NULL;
+
 #if 0
 	return kvmalloc(size, GFP_KERNEL);
 #else
