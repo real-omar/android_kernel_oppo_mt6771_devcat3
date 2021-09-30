@@ -150,7 +150,7 @@ static int mtk_rng_probe(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int mtk_rng_suspend(struct device *dev)
+static int mtk_rng_runtime_suspend(struct device *dev)
 {
 	struct mtk_rng *priv = dev_get_drvdata(dev);
 
@@ -159,7 +159,7 @@ static int mtk_rng_suspend(struct device *dev)
 	return 0;
 }
 
-static int mtk_rng_resume(struct device *dev)
+static int mtk_rng_runtime_resume(struct device *dev)
 {
 	struct mtk_rng *priv = dev_get_drvdata(dev);
 
@@ -167,8 +167,10 @@ static int mtk_rng_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops mtk_rng_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(mtk_rng_suspend,
-				mtk_rng_resume)
+	SET_RUNTIME_PM_OPS(mtk_rng_runtime_suspend,
+			   mtk_rng_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
+				pm_runtime_force_resume)
 };
 
 #define MTK_RNG_PM_OPS (&mtk_rng_pm_ops)
