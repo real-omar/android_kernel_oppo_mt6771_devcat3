@@ -213,21 +213,25 @@ static bool vp9_is_sf_ref_fb(struct vdec_vp9_inst *inst, struct vdec_fb *fb)
 	return false;
 }
 
-static struct vdec_fb *vp9_rm_from_fb_use_list(struct vdec_vp9_inst
-	*inst, void *addr)
+static struct vdec_fb *vp9_rm_from_fb_use_list(struct vdec_vp9_inst *inst,
+					       struct vdec_fb_node *node)
 {
 	struct vdec_fb *fb = NULL;
-	struct vdec_fb_node *node;
+	u64 addr = 0;
 
+	...
 	list_for_each_entry(node, &inst->fb_use_list, list) {
-		fb = (struct vdec_fb *)node->fb;
+		fb = node->fb;
+		addr = (u64)fb->base_y.va;
+
 		if (fb->base_y.va == addr) {
 			list_move_tail(&node->list,
-				&inst->available_fb_node_list);
-			break;
+				       &inst->available_fb_node_list);
+			return fb;
 		}
 	}
-	return fb;
+
+	return NULL;
 }
 
 static void vp9_add_to_fb_free_list(struct vdec_vp9_inst *inst,
