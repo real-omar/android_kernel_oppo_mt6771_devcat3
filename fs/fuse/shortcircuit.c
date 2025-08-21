@@ -20,6 +20,7 @@
 #include <linux/moduleparam.h>
 
 int __read_mostly sct_mode = 2;
+int __read_mostly sct_mode = 1;
 module_param(sct_mode, int, 0644);
 
 static char *__dentry_name(struct dentry *dentry, char *name)
@@ -102,6 +103,7 @@ void fuse_setup_shortcircuit(struct fuse_conn *fc, struct fuse_req *req)
 	flags = open_out->open_flags;
 	if ((flags & FOPEN_DIRECT_IO) || !(flags & FOPEN_KEEP_CACHE)) {
 		pr_info("fuse bypass sct #flags:%d\n", flags);
+		pr_debug("fuse bypass sct #flags:%d\n", flags);
 		return;
 	}
 
@@ -123,6 +125,7 @@ void fuse_setup_shortcircuit(struct fuse_conn *fc, struct fuse_req *req)
 
 	if (fd <= 1 || fd >= current->signal->rlim[RLIMIT_NOFILE].rlim_max) {
 		pr_info("fuse bypass sct:%d, %d\n", fd, flags);
+		pr_debug("fuse bypass sct:%d, %d\n", fd, flags);
 		return;
 	}
 
@@ -176,6 +179,49 @@ ssize_t fuse_shortcircuit_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	return fuse_shortcircuit_read_write_iter(iocb, from, 1);
 }
 
+ssize_t fuse_shortcircuit_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	int ret;
+	struct fuse_file *ff = file->private_data;
+	struct file *lower_filp = ff->rw_lower_file;
+	struct inode *fuse_inode = file_inode(file);
+	struct inode *lower_inode = file_inode(lower_filp);
+
+	if (!lower_filp->f_op->mmap)
+		return -ENODEV;
+
+	if (WARN_ON(file != vma->vm_file))
+		return -EIO;
+
+	vma->vm_file = get_file(lower_filp);
+	ret = call_mmap(vma->vm_file, vma);
+
+	if (ret)
+		fput(lower_filp);
+	else
+		fput(file);
+
+	if (lower_inode && !(file->f_flags & O_NOATIME)) {
+		if ((!timespec64_equal(&fuse_inode->i_mtime, &lower_inode->i_mtime) ||
+		     !timespec64_equal(&fuse_inode->i_ctime, &lower_inode->i_ctime))) {
+			fuse_inode->i_mtime = lower_inode->i_mtime;
+			fuse_inode->i_ctime = lower_inode->i_ctime;
+		}
+		touch_atime(&file->f_path);
+	}
+
+	return ret;
+}
+
+void fuse_shortcircuit_release(struct fuse_file *ff)
+{
+	if (!(ff->rw_lower_file))
+		return;
+
+	/* Release the lower file. */
+	fput(ff->rw_lower_file);
+	ff->rw_lower_file = NULL;
+}
 ssize_t fuse_shortcircuit_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int ret;
