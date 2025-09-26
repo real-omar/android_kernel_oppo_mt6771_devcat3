@@ -128,7 +128,7 @@ static time_t accum_days_in_year[] = {
 
 TIMESTAMP_T *tm_current(TIMESTAMP_T *tp)
 {
-	struct timespec ts = current_kernel_time();
+	struct timespec64 ts = current_kernel_time();
 	time_t second = ts.tv_sec;
 	time_t day, leap_day, month, year;
 
