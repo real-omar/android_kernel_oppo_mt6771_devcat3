@@ -3157,7 +3157,7 @@ static inline void ext4_update_time(struct ext4_sb_info *sbi)
 static inline bool ext4_time_over(struct ext4_sb_info *sbi)
 {
 	struct timespec64 ts = {sbi->interval_time, 0};
-	unsigned long interval = timespec_to_jiffies(&ts);
+	unsigned long interval = timespec64_to_jiffies(&ts);
 
 	return time_after(jiffies, sbi->last_time + interval);
 }
