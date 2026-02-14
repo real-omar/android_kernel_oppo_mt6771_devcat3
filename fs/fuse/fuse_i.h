@@ -173,6 +173,7 @@ struct fuse_file {
 	bool flock:1;
 
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	/* the read write file */
 	struct file *rw_lower_file;
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
@@ -257,6 +258,7 @@ struct fuse_args {
 		struct fuse_arg args[2];
 	} out;
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	/** fuse shortcircuit file  */
 	struct file *private_lower_rw_file;
 	char *iname;
@@ -414,6 +416,7 @@ struct fuse_req {
 	struct file *stolen_file;
 
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	/** fuse shortcircuit file  */
 	struct file *private_lower_rw_file;
 	char *iname;
@@ -423,9 +426,6 @@ struct fuse_req {
 struct fuse_iqueue {
 	/** Connection established */
 	unsigned connected;
-
-	/** Lock protecting accesses to members of this structure */
-	spinlock_t lock;
 
 	/** Readers of the connection are waiting on this */
 	wait_queue_head_t waitq;
@@ -582,6 +582,7 @@ struct fuse_conn {
 	unsigned handle_killpriv:1;
 
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	/** Shortcircuited IO. */
 	unsigned shortcircuit_io:1;
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
@@ -1050,10 +1051,6 @@ int fuse_set_acl(struct inode *inode, struct posix_acl *acl, int type);
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
 extern int sct_mode;
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
-#ifdef CONFIG_OPLUS_FEATURE_ACM
-void acm_fuse_init_cache(void);
-void acm_fuse_free_cache(void);
-#endif
 /* passthrough.c */
 int fuse_passthrough_open(struct fuse_dev *fud, u32 lower_fd);
 int fuse_passthrough_setup(struct fuse_conn *fc, struct fuse_file *ff,

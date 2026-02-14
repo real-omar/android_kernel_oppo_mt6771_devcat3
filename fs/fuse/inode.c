@@ -50,6 +50,7 @@ MODULE_PARM_DESC(max_user_congthresh,
  "unprivileged user can set");
 
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 static bool shortcircuit = true;
 module_param(shortcircuit, bool, 0644);
 MODULE_PARM_DESC(shortcircuit, "Enable or disable fuse shortcircuit. Default: y/Y/1");
@@ -596,7 +597,6 @@ static int fuse_show_options(struct seq_file *m, struct dentry *root)
 static void fuse_iqueue_init(struct fuse_iqueue *fiq)
 {
 	memset(fiq, 0, sizeof(struct fuse_iqueue));
-	spin_lock_init(&fiq->lock);
 	init_waitqueue_head(&fiq->waitq);
 	INIT_LIST_HEAD(&fiq->pending);
 	INIT_LIST_HEAD(&fiq->interrupts);
@@ -926,6 +926,7 @@ static void process_init_reply(struct fuse_conn *fc, struct fuse_req *req)
 			if (arg->flags & FUSE_WRITEBACK_CACHE)
 				fc->writeback_cache = 1;
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 			if (arg->flags & FUSE_SHORTCIRCUIT || fc->writeback_cache) {
 				/** an ugly way to determine FuseDaemon by writeback_cache
 				 *  since currently only FuseDaemon enable WBC
@@ -982,6 +983,7 @@ static void fuse_send_init(struct fuse_conn *fc, struct fuse_req *req)
 		FUSE_DO_READDIRPLUS | FUSE_READDIRPLUS_AUTO | FUSE_ASYNC_DIO |
 		FUSE_WRITEBACK_CACHE | FUSE_NO_OPEN_SUPPORT |
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+//shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 		FUSE_PARALLEL_DIROPS | FUSE_HANDLE_KILLPRIV | FUSE_POSIX_ACL |
 		FUSE_PASSTHROUGH | FUSE_SHORTCIRCUIT;
 #else
@@ -1215,10 +1217,6 @@ static int fuse_fill_super(struct super_block *sb, void *data, int silent)
 
 	fuse_send_init(fc, init_req);
 
-#ifdef CONFIG_OPLUS_FEATURE_ACM
-	acm_fuse_init_cache();
-#endif
-
 	return 0;
 
  err_unlock:
@@ -1250,9 +1248,6 @@ static void fuse_sb_destroy(struct super_block *sb)
 	struct fuse_conn *fc = get_fuse_conn_super(sb);
 
 	if (fc) {
-#ifdef CONFIG_OPLUS_FEATURE_ACM
-		acm_fuse_free_cache();
-#endif
 		fuse_send_destroy(fc);
 
 		fuse_abort_conn(fc);
