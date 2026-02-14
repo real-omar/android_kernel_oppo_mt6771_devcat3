@@ -9,7 +9,7 @@ export ARCH=arm64
 export KBUILD_BUILD_HOST=neolit
 export KBUILD_BUILD_USER="sarthakroy2002"
 if [ ! -d "clang" ]; then
-    wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r498229b.tar.gz -O "aosp-clang.tar.gz"
+    wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-14.0.0_r50/clang-r510928.tar.gz -O "aosp-clang.tar.gz"
     mkdir clang && tar -xf aosp-clang.tar.gz -C clang && rm -rf aosp-clang.tar.gz
 fi
 
