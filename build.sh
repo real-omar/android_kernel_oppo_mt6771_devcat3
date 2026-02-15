@@ -24,12 +24,22 @@ make -j$(nproc --all) O=out \
                       CONFIG_NO_ERROR_ON_MISMATCH=y
 }
 
-function zipping()
-{
-git clone --depth=1 https://github.com/sarthakroy2002/AnyKernel3.git AnyKernel
-cp out/arch/arm64/boot/Image.gz-dtb AnyKernel
-cd AnyKernel
-zip -r9 Test-OSS-KERNEL-RMX2020-NEOLIT.zip *
+zipping() {
+    IMAGE="out/arch/arm64/boot/Image.gz-dtb"
+
+    if [[ ! -f "$IMAGE" ]]; then
+        echo "❌ ERROR: Kernel image not found at $IMAGE"
+        echo "❌ Aborting zip process."
+        return 1
+    fi
+
+    git clone --depth=1 https://github.com/sarthakroy2002/AnyKernel3.git AnyKernel || return 1
+    cp "$IMAGE" AnyKernel || return 1
+
+    (
+        cd AnyKernel || exit 1
+        zip -r9 Test-OSS-KERNEL-RMX2020-NEOLIT.zip .
+    )
 }
 
 compile
