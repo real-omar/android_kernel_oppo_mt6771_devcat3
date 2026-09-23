@@ -309,10 +309,9 @@ drop:
 }
 
 
-static int ip_rcv_finish_core(struct net *net, struct sock *sk,
-			      struct sk_buff *skb)
-int udp_v4_early_demux(struct sk_buff *);
 int tcp_v4_early_demux(struct sk_buff *);
+int udp_v4_early_demux(struct sk_buff *);
+
 static int ip_rcv_finish_core(struct net *net, struct sock *sk,
 			      struct sk_buff *skb)
 {

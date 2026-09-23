@@ -802,8 +802,6 @@ struct xfrm_policy *xfrm_policy_bysel_ctx(struct net *net, const struct xfrm_mar
 					  struct xfrm_selector *sel,
 					  struct xfrm_sec_ctx *ctx, int delete,
 					  int *err)
-					  struct xfrm_sec_ctx *ctx, int delete,
-					  int *err)
 {
 	struct xfrm_policy *pol, *ret;
 	struct hlist_head *chain;
