@@ -1,0 +1,1 @@
+cmd_/home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wmt_chrdev_wifi.o := ld.lld -maarch64linux -O2 -z noexecstack  -r -o /home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wmt_chrdev_wifi.o /home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wmt_cdev_wifi.o 
