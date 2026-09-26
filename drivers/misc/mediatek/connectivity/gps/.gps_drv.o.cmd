@@ -1,1 +1,0 @@
-cmd_/home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/gps/gps_drv.o := ld.lld -maarch64linux -O2 -z noexecstack -s -r -o /home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/gps/gps_drv.o /home/omar/Desktop/kernel-dev/vendor/mediatek/kernel_modules/connectivity/gps/stp_chrdev_gps.o 
