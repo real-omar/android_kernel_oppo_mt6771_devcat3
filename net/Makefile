@@ -117,5 +117,5 @@ obj-y				+= oplus_nwpower/
 #ifdef OPLUS_FEATURE_APP_MONITOR
 #Xiong.Li@TECH.CN.WiFi.Network.2022890,2019/06/14,
 #Add for apps network monitors
-obj-y				+= oplus_apps_monitor/
+#obj-y				+= oplus_apps_monitor/
 #endif /* OPLUS_FEATURE_APP_MONITOR */

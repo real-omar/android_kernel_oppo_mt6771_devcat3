@@ -52,6 +52,7 @@
 #include <uapi/linux/if_bonding.h>
 #include <uapi/linux/pkt_cls.h>
 #include <linux/hashtable.h>
+#include <linux/u64_stats_sync.h>
 
 struct netpoll_info;
 struct device;
@@ -2334,7 +2335,11 @@ struct pcpu_sw_netstats {
 	u64     tx_bytes;
 	struct u64_stats_sync   syncp;
 };
-
+struct pcpu_lstats {
+	u64			packets;
+	u64			bytes;
+	struct u64_stats_sync	syncp;
+};
 static inline void dev_lstats_add(struct net_device *dev, unsigned int len)
 {
 	struct pcpu_lstats *lstats = this_cpu_ptr(dev->lstats);
