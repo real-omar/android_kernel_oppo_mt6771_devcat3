@@ -279,16 +279,15 @@ TRACE_EVENT(hps_update,
 		 unsigned int cur_tlp,
 		 unsigned int cur_iowait,
 		 char *hvytsk,
-		 char *limit,
-		 char *base,
+		 char *limit_base,
 		 unsigned int up_avg,
 		 unsigned int down_avg,
 		 unsigned int tlp_avg,
 		 unsigned int rush_cnt,
-		 char *target),
+		 char *target_str),
 
 	TP_ARGS(actionID, online, cur_load, cur_tlp, cur_iowait, hvytsk,
-		limit, base, up_avg, down_avg, tlp_avg, rush_cnt, target),
+		limit_base, up_avg, down_avg, tlp_avg, rush_cnt, target_str),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, actionID)
@@ -297,13 +296,12 @@ TRACE_EVENT(hps_update,
 		__field(unsigned int, cur_tlp)
 		__field(unsigned int, cur_iowait)
 		__string(hvytsk, hvytsk)
-		__string(limit, limit)
-		__string(base, base)
+		__string(limit_base, limit_base)
 		__field(unsigned int, up_avg)
 		__field(unsigned int, down_avg)
 		__field(unsigned int, tlp_avg)
 		__field(unsigned int, rush_cnt)
-		__string(target, target)
+		__string(target_str, target_str)
 	),
 
 	TP_fast_assign(
@@ -313,21 +311,22 @@ TRACE_EVENT(hps_update,
 		__entry->cur_tlp = cur_tlp;
 		__entry->cur_iowait = cur_iowait;
 		__assign_str(hvytsk, hvytsk);
-		__assign_str(limit, limit);
-		__assign_str(base, base);
+		__assign_str(limit_base, limit_base);
 		__entry->up_avg = up_avg;
 		__entry->down_avg = down_avg;
 		__entry->tlp_avg = tlp_avg;
 		__entry->rush_cnt = rush_cnt;
-		__assign_str(target, target);),
+		__assign_str(target_str, target_str);
+	),
 
 	TP_printk
 	("(0x%X)%s action end (%u)(%u)(%u) %s %s%s (%u)(%u)(%u)(%u) %s",
 		__entry->actionID, __get_str(online), __entry->cur_load,
 		__entry->cur_tlp, __entry->cur_iowait, __get_str(hvytsk),
-		__get_str(limit), __get_str(base), __entry->up_avg,
-		__entry->down_avg, __entry->tlp_avg, __entry->rush_cnt,
-		__get_str(target))
+		__get_str(limit_base), "",
+		__entry->up_avg, __entry->down_avg,
+		__entry->tlp_avg, __entry->rush_cnt,
+		__get_str(target_str))
 );
 
 #if 0
@@ -509,13 +508,25 @@ TRACE_EVENT(perf_index_s,
 		__entry->vcore_uv)
 );
 
+#ifndef MTK_STALL_DATA_DEFINED
+#define MTK_STALL_DATA_DEFINED
+struct mtk_stall_data {
+    int stall[8];
+};
+#endif
 
-	TRACE_EVENT(perf_index_l,
+/*
+ * perf_index_l: 12 arguments max (BPF backend limit).
+ * io_wl, io_dur and io_q_depth are packed into one int:
+ *   bits  0.. 5 : io_wl       (6 bits,  0..63)
+ *   bits  6..21 : io_dur      (16 bits, 0..65535)
+ *   bits 22..31 : io_q_depth  (10 bits, 0..1023)
+ */
+TRACE_EVENT(perf_index_l,
 
 	TP_PROTO(
 		long free_mem,
 		long avail_mem,
-		int io_wl,
 		int io_req_r,
 		int io_all_r,
 		int io_reqsz_r,
@@ -524,20 +535,17 @@ TRACE_EVENT(perf_index_s,
 		int io_all_w,
 		int io_reqsz_w,
 		int io_reqc_w,
-		int io_dur,
-		int io_q_dept,
-		int *stall
+		int io_packed,
+		struct mtk_stall_data *stall
 	),
 
 	TP_ARGS(free_mem,
 		avail_mem,
-		io_wl,
 		io_req_r, io_all_r, io_reqsz_r, io_reqc_r,
 		io_req_w, io_all_w, io_reqsz_w, io_reqc_w,
-		io_dur,
-		io_q_dept,
+		io_packed,
 		stall
-),
+	),
 
 	TP_STRUCT__entry(
 		__field(long, free_mem)
@@ -552,14 +560,14 @@ TRACE_EVENT(perf_index_s,
 		__field(int, io_reqsz_w)
 		__field(int, io_reqc_w)
 		__field(int, io_dur)
-		__field(int, io_q_dept)
+		__field(int, io_q_depth)
 		__array(int, stall, 8)
 	),
 
 	TP_fast_assign(
 		__entry->free_mem   = free_mem;
 		__entry->avail_mem  = avail_mem;
-		__entry->io_wl      = io_wl;
+		__entry->io_wl      = io_packed & 0x3F;
 		__entry->io_req_r   = io_req_r;
 		__entry->io_all_r   = io_all_r;
 		__entry->io_reqsz_r = io_reqsz_r;
@@ -568,9 +576,9 @@ TRACE_EVENT(perf_index_s,
 		__entry->io_all_w   = io_all_w;
 		__entry->io_reqsz_w = io_reqsz_w;
 		__entry->io_reqc_w  = io_reqc_w;
-		__entry->io_dur     = io_dur;
-		__entry->io_q_dept  = io_q_dept;
-		memcpy(__entry->stall, stall, sizeof(int)*8);
+		__entry->io_dur     = (io_packed >> 6)  & 0xFFFF;
+		__entry->io_q_depth = (io_packed >> 22) & 0x3FF;
+		memcpy(__entry->stall, stall->stall, sizeof(int) * 8);
 	),
 
 	TP_printk(
@@ -582,7 +590,7 @@ TRACE_EVENT(perf_index_s,
 		__entry->io_reqsz_r, __entry->io_reqc_r,
 		__entry->io_req_w, __entry->io_all_w,
 		__entry->io_reqsz_w, __entry->io_reqc_w,
-		__entry->io_dur,  __entry->io_q_dept,
+		__entry->io_dur,  __entry->io_q_depth,
 		__entry->stall[0], __entry->stall[1],
 		__entry->stall[2], __entry->stall[3],
 		__entry->stall[4], __entry->stall[5],
