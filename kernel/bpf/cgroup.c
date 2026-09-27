@@ -266,6 +266,7 @@ static int compute_effective_progs(struct cgroup *cgrp,
 
 	*array = progs;
 	return 0;
+}
 
 static void activate_effective_progs(struct cgroup *cgrp,
 				     enum bpf_attach_type type,
