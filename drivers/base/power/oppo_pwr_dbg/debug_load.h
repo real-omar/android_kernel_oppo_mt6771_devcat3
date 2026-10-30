@@ -66,7 +66,7 @@ extern void pm_qos_trace_dbg_dump(int pm_qos_class);
 #ifdef CONFIG_MTK_UNIFY_POWER
 extern int get_power(int cpu, unsigned long cap);
 #else
-extern int get_power(int cpu, int freq)
+extern int get_power(int cpu, int freq);
 #endif
 extern void pm_print_active_wakeup_sources(void);
 
@@ -168,7 +168,7 @@ extern void pm_qos_trace_dbg_dump(int pm_qos_class);
 #ifdef CONFIG_MTK_UNIFY_POWER
 extern int get_power(int cpu, unsigned long cap);
 #else
-extern int get_power(int cpu, int freq)
+extern int get_power(int cpu, int freq);
 #endif
 extern void pm_print_active_wakeup_sources(void);
 
