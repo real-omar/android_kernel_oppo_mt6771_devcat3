@@ -73,7 +73,9 @@ extern int get_power(int cpu, int freq);
 extern void pm_print_active_wakeup_sources(void);
 
 struct task_stat {
+	pid_t pid;
 	pid_t tgid;
+	unsigned int r_time;
 	unsigned int pwr;
 	unsigned int lcore_pwr;
 	char comm[TASK_COMM_LEN];
