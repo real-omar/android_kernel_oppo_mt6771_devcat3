@@ -228,8 +228,6 @@ static int compute_effective_progs(struct cgroup *cgrp,
 				   enum bpf_attach_type type,
 				   struct bpf_prog_array **array)
 {
-	struct bpf_prog_array __rcu *progs;
-	enum bpf_cgroup_storage_type stype;
 	struct bpf_prog_array_item *item;
 	struct bpf_prog_array *progs;
 	struct bpf_prog_list *pl;
@@ -251,16 +249,6 @@ static int compute_effective_progs(struct cgroup *cgrp,
 	cnt = 0;
 	p = cgrp;
 	do {
-		if (cnt == 0 || (p->bpf.flags[type] & BPF_F_ALLOW_MULTI))
-			list_for_each_entry(pl,
-					    &p->bpf.progs[type], node) {
-				if (!pl->prog)
-					continue;
-				rcu_dereference_protected(progs, 1)->
-					progs[cnt++] = pl->prog;
-			}
-		p = cgroup_parent(p);
-	} while (p);
 		if (cnt > 0 && !(p->bpf.flags[type] & BPF_F_ALLOW_MULTI))
 			continue;
 
