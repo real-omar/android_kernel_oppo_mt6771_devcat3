@@ -30,6 +30,7 @@
 #define NETLINK_RDMA		20
 #define NETLINK_CRYPTO		21	/* Crypto layer */
 #define NETLINK_SMC		22	/* SMC monitoring */
+#define NETLINK_OPLUS_APPS_MONITOR	35	/* Apps monitor NETLINK SOCK */
 
 #define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
 

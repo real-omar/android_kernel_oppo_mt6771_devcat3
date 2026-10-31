@@ -984,7 +984,6 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	struct fuse_conn *fc = get_fuse_conn(inode);
 	struct fuse_file *ff = iocb->ki_filp->private_data;
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
-	struct fuse_file *ff = iocb->ki_filp->private_data;
 //shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance
 	ssize_t ret_val;
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
@@ -1254,7 +1253,7 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct file *file = iocb->ki_filp;
 	struct address_space *mapping = file->f_mapping;
 #ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
-	struct fuse_file *ff = file->private_data;
+/*shubin@BSP.Kernel.FS 2020/08/20 improving fuse storage performance*/
 #endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
 	ssize_t written = 0;
 	ssize_t written_buffered = 0;
