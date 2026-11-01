@@ -41,6 +41,7 @@
 #include <mt-plat/sync_write.h>
 #include <mt-plat/mtk_io.h>
 #include <mt-plat/aee.h>
+#define CREATE_TRACE_POINTS
 #include <trace/events/mtk_events.h>
 #include <linux/sched/clock.h>
 #ifdef MET_SUPPORT
@@ -51,7 +52,6 @@
 #include <linux/of_address.h>
 #include <mtk_cm_mgr.h>
 
-#define CREATE_TRACE_POINTS
 #include "mtk_cm_mgr_platform_events.h"
 
 #include <linux/fb.h>
