@@ -271,6 +271,7 @@ TRACE_EVENT(ppm_limit_callback_update,
 		__entry->min_cpu_core, __entry->max_cpu_core)
 );
 
+#if 0 /* >12 args: breaks BPF raw probe */
 TRACE_EVENT(hps_update,
 
 	TP_PROTO(unsigned int actionID,
@@ -329,6 +330,7 @@ TRACE_EVENT(hps_update,
 		__entry->down_avg, __entry->tlp_avg, __entry->rush_cnt,
 		__get_str(target))
 );
+#endif /* >12 args: breaks BPF raw probe */
 
 #if 0
 TRACE_EVENT(sched_update,
@@ -518,11 +520,9 @@ TRACE_EVENT(perf_index_s,
 		int io_wl,
 		int io_req_r,
 		int io_all_r,
-		int io_reqsz_r,
 		int io_reqc_r,
 		int io_req_w,
 		int io_all_w,
-		int io_reqsz_w,
 		int io_reqc_w,
 		int io_dur,
 		int io_q_dept,
@@ -532,8 +532,8 @@ TRACE_EVENT(perf_index_s,
 	TP_ARGS(free_mem,
 		avail_mem,
 		io_wl,
-		io_req_r, io_all_r, io_reqsz_r, io_reqc_r,
-		io_req_w, io_all_w, io_reqsz_w, io_reqc_w,
+		io_req_r, io_all_r, io_reqc_r,
+		io_req_w, io_all_w, io_reqc_w,
 		io_dur,
 		io_q_dept,
 		stall
@@ -545,11 +545,9 @@ TRACE_EVENT(perf_index_s,
 		__field(int, io_wl)
 		__field(int, io_req_r)
 		__field(int, io_all_r)
-		__field(int, io_reqsz_r)
 		__field(int, io_reqc_r)
 		__field(int, io_req_w)
 		__field(int, io_all_w)
-		__field(int, io_reqsz_w)
 		__field(int, io_reqc_w)
 		__field(int, io_dur)
 		__field(int, io_q_dept)
@@ -562,11 +560,9 @@ TRACE_EVENT(perf_index_s,
 		__entry->io_wl      = io_wl;
 		__entry->io_req_r   = io_req_r;
 		__entry->io_all_r   = io_all_r;
-		__entry->io_reqsz_r = io_reqsz_r;
 		__entry->io_reqc_r  = io_reqc_r;
 		__entry->io_req_w   = io_req_w;
 		__entry->io_all_w   = io_all_w;
-		__entry->io_reqsz_w = io_reqsz_w;
 		__entry->io_reqc_w  = io_reqc_w;
 		__entry->io_dur     = io_dur;
 		__entry->io_q_dept  = io_q_dept;
@@ -574,14 +570,12 @@ TRACE_EVENT(perf_index_s,
 	),
 
 	TP_printk(
-		"free_mem=%ld avail_mem=%ld iostats=%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d stall=%d|%d|%d|%d|%d|%d|%d|%d",
+		"free_mem=%ld avail_mem=%ld iostats=%d|%d|%d|%d|%d|%d|%d|%d|%d stall=%d|%d|%d|%d|%d|%d|%d|%d",
 		__entry->free_mem,
 		__entry->avail_mem,
 		__entry->io_wl,
-		__entry->io_req_r, __entry->io_all_r,
-		__entry->io_reqsz_r, __entry->io_reqc_r,
-		__entry->io_req_w, __entry->io_all_w,
-		__entry->io_reqsz_w, __entry->io_reqc_w,
+		__entry->io_req_r, __entry->io_all_r, __entry->io_reqc_r,
+		__entry->io_req_w, __entry->io_all_w, __entry->io_reqc_w,
 		__entry->io_dur,  __entry->io_q_dept,
 		__entry->stall[0], __entry->stall[1],
 		__entry->stall[2], __entry->stall[3],
