@@ -2225,6 +2225,13 @@ union bpf_attr {
 	FN(redirect_map),		\
 	FN(sk_redirect_map),		\
 	FN(sock_map_update),		\
+	FN(sk_redirect_hash),		\
+	FN(sock_hash_update),		\
+	FN(msg_redirect_map),		\
+	FN(msg_redirect_hash),		\
+	FN(sk_select_reuseport),	\
+	FN(get_local_storage),		\
+	FN(perf_event_read_value),	\
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
