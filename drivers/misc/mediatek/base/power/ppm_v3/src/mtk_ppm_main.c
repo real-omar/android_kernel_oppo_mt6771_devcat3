@@ -25,6 +25,7 @@
 #include <linux/ktime.h>
 #include <linux/string.h>
 #include <linux/topology.h>
+#include <trace/events/mtk_events.h>
 #include "mtk_ppm_internal.h"
 #include <linux/of.h>
 
