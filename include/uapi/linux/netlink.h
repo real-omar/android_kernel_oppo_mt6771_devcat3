@@ -57,6 +57,8 @@
 #define NETLINK_OPLUS_NWPOWERSTATE	36	/*OPLUS NW PowerState*/
 //#endif /* OPLUS_FEATURE_NWPOWER */
 
+#define NETLINK_OPLUS_APPS_MONITOR  35      /* Apps monitor NETLINK SOCK */
+
 /* #define OPLUS_NETLINK_MM_KEVENT 41  (defined in oplus_mm_kevent.h file) */
 
 //#define MAX_LINKS 32
