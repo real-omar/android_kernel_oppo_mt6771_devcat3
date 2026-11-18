@@ -2232,6 +2232,30 @@ union bpf_attr {
 	FN(sk_select_reuseport),	\
 	FN(get_local_storage),		\
 	FN(perf_event_read_value),	\
+	FN(get_stack),			\
+	FN(override_return),		\
+	FN(bind),			\
+	FN(getsockopt),			\
+	FN(skb_load_bytes_relative),	\
+	FN(fib_lookup),			\
+	FN(skb_get_xfrm_state),		\
+	FN(skb_cgroup_id),		\
+	FN(skb_ancestor_cgroup_id),	\
+	FN(get_current_cgroup_id),	\
+	FN(sock_ops_cb_flags_set),	\
+	FN(msg_pull_data),		\
+	FN(msg_cork_bytes),		\
+	FN(msg_apply_bytes),		\
+	FN(xdp_adjust_meta),		\
+	FN(xdp_adjust_tail),		\
+	FN(lwt_push_encap),		\
+	FN(lwt_seg6_store_bytes),	\
+	FN(lwt_seg6_adjust_srh),	\
+	FN(lwt_seg6_action),		\
+	FN(rc_keydown),			\
+	FN(rc_repeat),			\
+	FN(perf_prog_read_value),	\
+	FN(ktime_get_boot_ns),		\
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
