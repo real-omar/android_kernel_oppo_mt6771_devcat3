@@ -265,9 +265,10 @@ static int array_map_update_elem(struct bpf_map *map, void *key, void *value,
 		memcpy(this_cpu_ptr(array->pptrs[index & array->index_mask]),
 		       value, map->value_size);
 	else  {
-		if (unlikely(sizeof(array->value) <
-			array->elem_size * (index & array->index_mask)))
-			return -EINVAL;
+		/* 4.14's sizeof(flexible array) == 0 made this check reject
+		 * every index > 0 with -EINVAL. Upper bound already checked
+		 * against max_entries above.
+		 */
 
 		memcpy(array->value +
 		       array->elem_size * (index & array->index_mask),

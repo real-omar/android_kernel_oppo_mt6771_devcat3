@@ -1192,6 +1192,10 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 	down_read(&uts_sem);
 	memcpy(&tmp, utsname(), sizeof(tmp));
 	up_read(&uts_sem);
+
+	/* Android 15 GSI's bpfloader rejects kernels below 4.19. */
+	strlcpy(tmp.release, "4.19.236-gsi", sizeof(tmp.release));
+
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;
 
@@ -1216,6 +1220,10 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 	down_read(&uts_sem);
 	memcpy(&tmp, utsname(), sizeof(tmp));
 	up_read(&uts_sem);
+
+	/* Android 15 GSI's bpfloader rejects kernels below 4.19. */
+	strlcpy(tmp.release, "4.19.236-gsi", sizeof(tmp.release));
+
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;
 

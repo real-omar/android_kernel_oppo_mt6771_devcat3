@@ -353,7 +353,7 @@ int bpf_get_file_flag(int flags)
 		   offsetof(union bpf_attr, CMD##_LAST_FIELD) - \
 		   sizeof(attr->CMD##_LAST_FIELD)) != NULL
 
-#define BPF_MAP_CREATE_LAST_FIELD numa_node
+#define BPF_MAP_CREATE_LAST_FIELD btf_value_type_id
 /* called via syscall */
 static int map_create(union bpf_attr *attr)
 {
@@ -594,6 +594,12 @@ static void maybe_wait_bpf_programs(struct bpf_map *map)
 
 static int map_update_elem(union bpf_attr *attr)
 {
+	/* Android 15's BpfMap may pass newer flags such as BPF_F_LOCK (4)
+	 * that this 4.14 kernel does not understand and would reject with
+	 * -EINVAL. Keep only flags we know (BPF_ANY/BPF_NOEXIST/BPF_EXIST).
+	 */
+	attr->flags &= BPF_EXIST;
+
 	void __user *ukey = u64_to_user_ptr(attr->key);
 	void __user *uvalue = u64_to_user_ptr(attr->value);
 	int ufd = attr->map_fd;
@@ -1070,7 +1076,7 @@ struct bpf_prog *bpf_prog_get_type(u32 ufd, enum bpf_prog_type type)
 EXPORT_SYMBOL_GPL(bpf_prog_get_type);
 
 /* last field in 'union bpf_attr' used by this command */
-#define	BPF_PROG_LOAD_LAST_FIELD prog_flags
+#define	BPF_PROG_LOAD_LAST_FIELD expected_attach_type
 
 static int bpf_prog_load(union bpf_attr *attr)
 {

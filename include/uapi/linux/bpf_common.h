@@ -50,7 +50,8 @@
 #define		BPF_X		0x08
 
 #ifndef BPF_MAXINSNS
-#define BPF_MAXINSNS 4096
+/* Android 15 BPF objects can be larger than the old 4096 instruction limit */
+#define BPF_MAXINSNS 1048576
 #endif
 
 #endif /* _UAPI__LINUX_BPF_COMMON_H__ */

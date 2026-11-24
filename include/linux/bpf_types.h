@@ -43,3 +43,9 @@ BPF_MAP_TYPE(BPF_MAP_TYPE_DEVMAP, dev_map_ops)
 BPF_MAP_TYPE(BPF_MAP_TYPE_SOCKMAP, sock_map_ops)
 #endif
 #endif
+
+/* Android 15 BPF objects reference these newer map types.  Use existing
+ * implementations as stubs so the maps can be created and pinned; program
+ * loading is handled separately. */
+BPF_MAP_TYPE(BPF_MAP_TYPE_DEVMAP_HASH, htab_map_ops)
+BPF_MAP_TYPE(BPF_MAP_TYPE_RINGBUF, array_map_ops)
