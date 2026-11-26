@@ -333,3 +333,5 @@ source "fs/oexfat/Kconfig"
 #endif
 
 endmenu
+
+source "fs/erofs/Kconfig"
