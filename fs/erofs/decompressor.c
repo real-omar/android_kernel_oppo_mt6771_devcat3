@@ -163,8 +163,9 @@ static int z_erofs_lz4_decompress(struct z_erofs_decompress_req *rq, u8 *out)
 						  inlen, rq->outputsize,
 						  rq->outputsize);
 	else
-		ret = LZ4_decompress_safe(src + inputmargin, out,
-					  inlen, rq->outputsize);
+		ret = LZ4_decompress_safe_partial(src + inputmargin, out,
+							  inlen, rq->outputsize,
+							  rq->outputsize);
 
 	if (ret != rq->outputsize) {
 		erofs_err(rq->sb, "failed to decompress %d in[%u, %u] out[%u]",

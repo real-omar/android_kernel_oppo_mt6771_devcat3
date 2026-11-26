@@ -885,7 +885,7 @@ static int z_erofs_decompress_pcluster(struct super_block *sb,
 					.inputsize = PAGE_SIZE,
 					.outputsize = outputsize,
 					.alg = pcl->algorithmformat,
-					.inplace_io = overlapped,
+					.inplace_io = false,
 					.partial_decoding = partial
 				 }, pagepool);
 
