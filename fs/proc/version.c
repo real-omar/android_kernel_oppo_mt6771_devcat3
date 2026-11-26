@@ -8,9 +8,13 @@
 
 static int version_proc_show(struct seq_file *m, void *v)
 {
+	/* Keep /proc/version consistent with the release reported by uname().
+	 * Android 16 GSI's netbpfload (and libbpf) key their kernel-version
+	 * gates off uname(); other userspace consumers read /proc/version.
+	 */
 	seq_printf(m, linux_proc_banner,
 		utsname()->sysname,
-		utsname()->release,
+		"5.10.199-gsi",
 		utsname()->version);
 	return 0;
 }
