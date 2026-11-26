@@ -1,14 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-only
 /*
- * linux/drivers/staging/erofs/dir.c
- *
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
+ *             https://www.huawei.com/
  * Created by Gao Xiang <gaoxiang25@huawei.com>
- *
- * This file is subject to the terms and conditions of the GNU General Public
- * License.  See the file COPYING in the main directory of the Linux
- * distribution for more details.
  */
 #include "internal.h"
 
@@ -33,12 +27,12 @@ static void debug_one_dentry(unsigned char d_type, const char *de_name,
 	memcpy(dbg_namebuf, de_name, de_namelen);
 	dbg_namebuf[de_namelen] = '\0';
 
-	debugln("found dirent %s de_len %u d_type %d", dbg_namebuf,
-		de_namelen, d_type);
+	erofs_dbg("found dirent %s de_len %u d_type %d", dbg_namebuf,
+		  de_namelen, d_type);
 #endif
 }
 
-static int erofs_fill_dentries(struct dir_context *ctx,
+static int erofs_fill_dentries(struct inode *dir, struct dir_context *ctx,
 			       void *dentry_blk, unsigned int *ofs,
 			       unsigned int nameoff, unsigned int maxsize)
 {
@@ -65,10 +59,12 @@ static int erofs_fill_dentries(struct dir_context *ctx,
 			de_namelen = le16_to_cpu(de[1].nameoff) - nameoff;
 
 		/* a corrupted entry is found */
-		if (unlikely(nameoff + de_namelen > maxsize ||
-			     de_namelen > EROFS_NAME_LEN)) {
+		if (nameoff + de_namelen > maxsize ||
+		    de_namelen > EROFS_NAME_LEN) {
+			erofs_err(dir->i_sb, "bogus dirent @ nid %llu",
+				  EROFS_I(dir)->nid);
 			DBG_BUGON(1);
-			return -EIO;
+			return -EFSCORRUPTED;
 		}
 
 		debug_one_dentry(d_type, de_name, de_namelen);
@@ -103,9 +99,10 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 			err = -ENOMEM;
 			break;
 		} else if (IS_ERR(dentry_page)) {
-			errln("fail to readdir of logical block %u of nid %llu",
-			      i, EROFS_V(dir)->nid);
-			err = PTR_ERR(dentry_page);
+			erofs_err(dir->i_sb,
+				  "fail to readdir of logical block %u of nid %llu",
+				  i, EROFS_I(dir)->nid);
+			err = -EFSCORRUPTED;
 			break;
 		}
 
@@ -113,12 +110,12 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 
 		nameoff = le16_to_cpu(de->nameoff);
 
-		if (unlikely(nameoff < sizeof(struct erofs_dirent) ||
-			     nameoff >= PAGE_SIZE)) {
-			errln("%s, invalid de[0].nameoff %u",
-			      __func__, nameoff);
-
-			err = -EIO;
+		if (nameoff < sizeof(struct erofs_dirent) ||
+		    nameoff >= PAGE_SIZE) {
+			erofs_err(dir->i_sb,
+				  "invalid de[0].nameoff %u @ nid %llu",
+				  nameoff, EROFS_I(dir)->nid);
+			err = -EFSCORRUPTED;
 			goto skip_this;
 		}
 
@@ -126,15 +123,16 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 				dirsize - ctx->pos + ofs, PAGE_SIZE);
 
 		/* search dirents at the arbitrary position */
-		if (unlikely(initial)) {
+		if (initial) {
 			initial = false;
 
 			ofs = roundup(ofs, sizeof(struct erofs_dirent));
-			if (unlikely(ofs >= nameoff))
+			if (ofs >= nameoff)
 				goto skip_this;
 		}
 
-		err = erofs_fill_dentries(ctx, de, &ofs, nameoff, maxsize);
+		err = erofs_fill_dentries(dir, ctx, de, &ofs,
+					  nameoff, maxsize);
 skip_this:
 		kunmap(dentry_page);
 
@@ -142,7 +140,7 @@ skip_this:
 
 		ctx->pos = blknr_to_addr(i) + ofs;
 
-		if (unlikely(err))
+		if (err)
 			break;
 		++i;
 		ofs = 0;
