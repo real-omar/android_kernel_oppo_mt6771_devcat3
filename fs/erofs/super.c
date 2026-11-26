@@ -91,9 +91,8 @@ static struct inode *erofs_alloc_inode(struct super_block *sb)
 	return &vi->vfs_inode;
 }
 
-static void i_callback(struct rcu_head *head)
+static void erofs_free_inode(struct inode *inode)
 {
-	struct inode *inode = container_of(head, struct inode, i_rcu);
 	struct erofs_inode *vi = EROFS_I(inode);
 
 	/* be careful of RCU symlink path */
@@ -102,11 +101,6 @@ static void i_callback(struct rcu_head *head)
 	kfree(vi->xattr_shared_xattrs);
 
 	kmem_cache_free(erofs_inode_cachep, vi);
-}
-
-static void destroy_inode(struct inode *inode)
-{
-	call_rcu(&inode->i_rcu, i_callback);
 }
 
 static bool check_layout_compatibility(struct super_block *sb,
@@ -125,136 +119,6 @@ static bool check_layout_compatibility(struct super_block *sb,
 	}
 	return true;
 }
-
-#ifdef CONFIG_EROFS_FS_ZIP
-/* read variable-sized metadata, offset will be aligned by 4-byte */
-static void *erofs_read_metadata(struct super_block *sb, struct page **pagep,
-				 erofs_off_t *offset, int *lengthp)
-{
-	struct page *page = *pagep;
-	u8 *buffer, *ptr;
-	int len, i, cnt;
-	erofs_blk_t blk;
-
-	*offset = round_up(*offset, 4);
-	blk = erofs_blknr(*offset);
-
-	if (!page || page->index != blk) {
-		if (page) {
-			unlock_page(page);
-			put_page(page);
-		}
-		page = erofs_get_meta_page(sb, blk);
-		if (IS_ERR(page))
-			goto err_nullpage;
-	}
-
-	ptr = kmap(page);
-	len = le16_to_cpu(*(__le16 *)&ptr[erofs_blkoff(*offset)]);
-	if (!len)
-		len = U16_MAX + 1;
-	buffer = kmalloc(len, GFP_KERNEL);
-	if (!buffer) {
-		buffer = ERR_PTR(-ENOMEM);
-		goto out;
-	}
-	*offset += sizeof(__le16);
-	*lengthp = len;
-
-	for (i = 0; i < len; i += cnt) {
-		cnt = min(EROFS_BLKSIZ - (int)erofs_blkoff(*offset), len - i);
-		blk = erofs_blknr(*offset);
-
-		if (!page || page->index != blk) {
-			if (page) {
-				kunmap(page);
-				unlock_page(page);
-				put_page(page);
-			}
-			page = erofs_get_meta_page(sb, blk);
-			if (IS_ERR(page)) {
-				kfree(buffer);
-				goto err_nullpage;
-			}
-			ptr = kmap(page);
-		}
-		memcpy(buffer + i, ptr + erofs_blkoff(*offset), cnt);
-		*offset += cnt;
-	}
-out:
-	kunmap(page);
-	*pagep = page;
-	return buffer;
-err_nullpage:
-	*pagep = NULL;
-	return page;
-}
-
-static int erofs_load_compr_cfgs(struct super_block *sb,
-				 struct erofs_super_block *dsb)
-{
-	struct erofs_sb_info *sbi;
-	struct page *page;
-	unsigned int algs, alg;
-	erofs_off_t offset;
-	int size, ret;
-
-	sbi = EROFS_SB(sb);
-	sbi->available_compr_algs = le16_to_cpu(dsb->u1.available_compr_algs);
-
-	if (sbi->available_compr_algs & ~Z_EROFS_ALL_COMPR_ALGS) {
-		erofs_err(sb, "try to load compressed fs with unsupported algorithms %x",
-			  sbi->available_compr_algs & ~Z_EROFS_ALL_COMPR_ALGS);
-		return -EINVAL;
-	}
-
-	offset = EROFS_SUPER_OFFSET + sbi->sb_size;
-	page = NULL;
-	alg = 0;
-	ret = 0;
-
-	for (algs = sbi->available_compr_algs; algs; algs >>= 1, ++alg) {
-		void *data;
-
-		if (!(algs & 1))
-			continue;
-
-		data = erofs_read_metadata(sb, &page, &offset, &size);
-		if (IS_ERR(data)) {
-			ret = PTR_ERR(data);
-			goto err;
-		}
-
-		switch (alg) {
-		case Z_EROFS_COMPRESSION_LZ4:
-			ret = z_erofs_load_lz4_config(sb, dsb, data, size);
-			break;
-		default:
-			DBG_BUGON(1);
-			ret = -EFAULT;
-		}
-		kfree(data);
-		if (ret)
-			goto err;
-	}
-err:
-	if (page) {
-		unlock_page(page);
-		put_page(page);
-	}
-	return ret;
-}
-#else
-static int erofs_load_compr_cfgs(struct super_block *sb,
-				 struct erofs_super_block *dsb)
-{
-	if (dsb->u1.available_compr_algs) {
-		erofs_err(sb, "try to load compressed fs when compression is disabled");
-		return -EINVAL;
-	}
-	return 0;
-}
-#endif
 
 static int erofs_read_superblock(struct super_block *sb)
 {
@@ -283,7 +147,7 @@ static int erofs_read_superblock(struct super_block *sb)
 	}
 
 	sbi->feature_compat = le32_to_cpu(dsb->feature_compat);
-	if (erofs_sb_has_sb_chksum(sbi)) {
+	if (sbi->feature_compat & EROFS_FEATURE_COMPAT_SB_CHKSUM) {
 		ret = erofs_superblock_csum_verify(sb, data);
 		if (ret)
 			goto out;
@@ -292,20 +156,14 @@ static int erofs_read_superblock(struct super_block *sb)
 	blkszbits = dsb->blkszbits;
 	/* 9(512 bytes) + LOG_SECTORS_PER_BLOCK == LOG_BLOCK_SIZE */
 	if (blkszbits != LOG_BLOCK_SIZE) {
-		erofs_err(sb, "blkszbits %u isn't supported on this platform",
-			  blkszbits);
+		erofs_err(sb, "blksize %u isn't supported on this platform",
+			  1 << blkszbits);
 		goto out;
 	}
 
 	if (!check_layout_compatibility(sb, dsb))
 		goto out;
 
-	sbi->sb_size = 128 + dsb->sb_extslots * EROFS_SB_EXTSLOT_SIZE;
-	if (sbi->sb_size > EROFS_BLKSIZ) {
-		erofs_err(sb, "invalid sb_extslots %u (more than a fs block)",
-			  sbi->sb_size);
-		goto out;
-	}
 	sbi->blocks = le32_to_cpu(dsb->blocks);
 	sbi->meta_blkaddr = le32_to_cpu(dsb->meta_blkaddr);
 #ifdef CONFIG_EROFS_FS_XATTR
@@ -327,213 +185,48 @@ static int erofs_read_superblock(struct super_block *sb)
 		ret = -EFSCORRUPTED;
 		goto out;
 	}
-
-	/* parse on-disk compression configurations */
-	if (erofs_sb_has_compr_cfgs(sbi))
-		ret = erofs_load_compr_cfgs(sb, dsb);
-	else
-		ret = z_erofs_load_lz4_config(sb, dsb, NULL, 0);
+	ret = 0;
 out:
 	kunmap(page);
 	put_page(page);
 	return ret;
 }
 
-#ifdef CONFIG_EROFS_FS_ZIP
-static int erofs_build_cache_strategy(struct super_block *sb,
-				      substring_t *args)
-{
-	struct erofs_sb_info *sbi = EROFS_SB(sb);
-	const char *cs = match_strdup(args);
-	int err = 0;
-
-	if (!cs) {
-		erofs_err(sb, "Not enough memory to store cache strategy");
-		return -ENOMEM;
-	}
-
-	if (!strcmp(cs, "disabled")) {
-		sbi->cache_strategy = EROFS_ZIP_CACHE_DISABLED;
-	} else if (!strcmp(cs, "readahead")) {
-		sbi->cache_strategy = EROFS_ZIP_CACHE_READAHEAD;
-	} else if (!strcmp(cs, "readaround")) {
-		sbi->cache_strategy = EROFS_ZIP_CACHE_READAROUND;
-	} else {
-		erofs_err(sb, "Unrecognized cache strategy \"%s\"", cs);
-		err = -EINVAL;
-	}
-	kfree(cs);
-	return err;
-}
-#else
-static int erofs_build_cache_strategy(struct super_block *sb,
-				      substring_t *args)
-{
-	erofs_info(sb, "EROFS compression is disabled, so cache strategy is ignored");
-	return 0;
-}
-#endif
-
 /* set up default EROFS parameters */
-static void erofs_default_options(struct erofs_sb_info *sbi)
+static void erofs_default_options(struct erofs_fs_context *ctx)
 {
 #ifdef CONFIG_EROFS_FS_ZIP
-	sbi->cache_strategy = EROFS_ZIP_CACHE_READAROUND;
-	sbi->max_sync_decompress_pages = 3;
-	sbi->readahead_sync_decompress = false;
+	ctx->cache_strategy = EROFS_ZIP_CACHE_READAROUND;
+	ctx->max_sync_decompress_pages = 3;
 #endif
 #ifdef CONFIG_EROFS_FS_XATTR
-	set_opt(sbi, XATTR_USER);
+	set_opt(ctx, XATTR_USER);
 #endif
 #ifdef CONFIG_EROFS_FS_POSIX_ACL
-	set_opt(sbi, POSIX_ACL);
+	set_opt(ctx, POSIX_ACL);
 #endif
 }
 
-enum {
-	Opt_user_xattr,
-	Opt_nouser_xattr,
-	Opt_acl,
-	Opt_noacl,
-	Opt_cache_strategy,
-	Opt_err
-};
-
-static match_table_t erofs_tokens = {
-	{Opt_user_xattr, "user_xattr"},
-	{Opt_nouser_xattr, "nouser_xattr"},
-	{Opt_acl, "acl"},
-	{Opt_noacl, "noacl"},
-	{Opt_cache_strategy, "cache_strategy=%s"},
-	{Opt_err, NULL}
-};
-
-static int erofs_parse_options(struct super_block *sb, char *options)
-{
-	substring_t args[MAX_OPT_ARGS];
-	char *p;
-	int err;
-
-	if (!options)
-		return 0;
-
-	while ((p = strsep(&options, ","))) {
-		int token;
-
-		if (!*p)
-			continue;
-
-		args[0].to = args[0].from = NULL;
-		token = match_token(p, erofs_tokens, args);
-
-		switch (token) {
-#ifdef CONFIG_EROFS_FS_XATTR
-		case Opt_user_xattr:
-			set_opt(EROFS_SB(sb), XATTR_USER);
-			break;
-		case Opt_nouser_xattr:
-			clear_opt(EROFS_SB(sb), XATTR_USER);
-			break;
-#else
-		case Opt_user_xattr:
-			erofs_info(sb, "user_xattr options not supported");
-			break;
-		case Opt_nouser_xattr:
-			erofs_info(sb, "nouser_xattr options not supported");
-			break;
-#endif
-#ifdef CONFIG_EROFS_FS_POSIX_ACL
-		case Opt_acl:
-			set_opt(EROFS_SB(sb), POSIX_ACL);
-			break;
-		case Opt_noacl:
-			clear_opt(EROFS_SB(sb), POSIX_ACL);
-			break;
-#else
-		case Opt_acl:
-			erofs_info(sb, "acl options not supported");
-			break;
-		case Opt_noacl:
-			erofs_info(sb, "noacl options not supported");
-			break;
-#endif
-		case Opt_cache_strategy:
-			err = erofs_build_cache_strategy(sb, args);
-			if (err)
-				return err;
-			break;
-		default:
-			erofs_err(sb, "Unrecognized mount option \"%s\" or missing value", p);
-			return -EINVAL;
-		}
-	}
-	return 0;
-}
-
-#ifdef CONFIG_EROFS_FS_ZIP
-static const struct address_space_operations managed_cache_aops;
-
-static int erofs_managed_cache_releasepage(struct page *page, gfp_t gfp_mask)
-{
-	int ret = 1;	/* 0 - busy */
-	struct address_space *const mapping = page->mapping;
-
-	DBG_BUGON(!PageLocked(page));
-	DBG_BUGON(mapping->a_ops != &managed_cache_aops);
-
-	if (PagePrivate(page))
-		ret = erofs_try_to_free_cached_page(mapping, page);
-
-	return ret;
-}
-
-static void erofs_managed_cache_invalidatepage(struct page *page,
-					       unsigned int offset,
-					       unsigned int length)
-{
-	const unsigned int stop = length + offset;
-
-	DBG_BUGON(!PageLocked(page));
-
-	/* Check for potential overflow in debug mode */
-	DBG_BUGON(stop > PAGE_SIZE || stop < length);
-
-	if (offset == 0 && stop == PAGE_SIZE)
-		while (!erofs_managed_cache_releasepage(page, GFP_NOFS))
-			cond_resched();
-}
-
-static const struct address_space_operations managed_cache_aops = {
-	.releasepage = erofs_managed_cache_releasepage,
-	.invalidatepage = erofs_managed_cache_invalidatepage,
-};
-
-static int erofs_init_managed_cache(struct super_block *sb)
-{
-	struct erofs_sb_info *const sbi = EROFS_SB(sb);
-	struct inode *const inode = new_inode(sb);
-
-	if (!inode)
-		return -ENOMEM;
-
-	set_nlink(inode, 1);
-	inode->i_size = OFFSET_MAX;
-
-	inode->i_mapping->a_ops = &managed_cache_aops;
-	mapping_set_gfp_mask(inode->i_mapping,
-			     GFP_NOFS | __GFP_HIGHMEM | __GFP_MOVABLE);
-	sbi->managed_cache = inode;
-	return 0;
-}
-#else
 static int erofs_init_managed_cache(struct super_block *sb) { return 0; }
-#endif
 
 static int erofs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct inode *inode;
 	struct erofs_sb_info *sbi;
+	struct erofs_fs_context ctx = { 0 };
+	char *options = data, *p, *name;
 	int err;
+
+	erofs_default_options(&ctx);
+	while ((p = strsep(&options, ",")) != NULL) {
+		if (!*p)
+			continue;
+		name = p;
+		if (!strcmp(name, "noacl") || !strcmp(name, "acl"))
+			(!strcmp(name, "acl")) ? set_opt(&ctx, POSIX_ACL) : clear_opt(&ctx, POSIX_ACL);
+		else if (!strcmp(name, "nouser_xattr") || !strcmp(name, "user_xattr"))
+			(!strcmp(name, "user_xattr")) ? set_opt(&ctx, XATTR_USER) : clear_opt(&ctx, XATTR_USER);
+	}
 
 	sb->s_magic = EROFS_SUPER_MAGIC;
 
@@ -558,21 +251,15 @@ static int erofs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_op = &erofs_sops;
 	sb->s_xattr = erofs_xattr_handlers;
 
-	/* set erofs default mount options */
-	erofs_default_options(sbi);
-
-	err = erofs_parse_options(sb, data);
-	if (err)
-		return err;
-
-	if (test_opt(sbi, POSIX_ACL))
+	if (test_opt(&ctx, POSIX_ACL))
 		sb->s_flags |= SB_POSIXACL;
 	else
 		sb->s_flags &= ~SB_POSIXACL;
 
+	sbi->ctx = ctx;
+
 #ifdef CONFIG_EROFS_FS_ZIP
-	INIT_RADIX_TREE(&sbi->workstn.tree, GFP_ATOMIC);
-	spin_lock_init(&sbi->workstn.lock);
+	xa_init(&sbi->managed_pslots);
 #endif
 
 	/* get the root inode */
@@ -597,8 +284,7 @@ static int erofs_fill_super(struct super_block *sb, void *data, int silent)
 	if (err)
 		return err;
 
-	erofs_info(sb, "mounted with opts: %s, root inode @ nid %llu.",
-		   (char *)data, ROOT_NID(sbi));
+	erofs_info(sb, "mounted with root inode @ nid %llu.", ROOT_NID(sbi));
 	return 0;
 }
 
@@ -669,7 +355,6 @@ static int __init erofs_module_init(void)
 	if (err)
 		goto shrinker_err;
 
-	erofs_pcpubuf_init();
 	err = z_erofs_init_zip_subsystem();
 	if (err)
 		goto zip_err;
@@ -699,7 +384,6 @@ static void __exit erofs_module_exit(void)
 	/* Ensure all RCU free inodes are safe before cache is destroyed. */
 	rcu_barrier();
 	kmem_cache_destroy(erofs_inode_cachep);
-	erofs_pcpubuf_exit();
 }
 
 /* get filesystem statistics */
@@ -727,61 +411,36 @@ static int erofs_statfs(struct dentry *dentry, struct kstatfs *buf)
 static int erofs_show_options(struct seq_file *seq, struct dentry *root)
 {
 	struct erofs_sb_info *sbi __maybe_unused = EROFS_SB(root->d_sb);
+	struct erofs_fs_context *ctx __maybe_unused = &sbi->ctx;
 
 #ifdef CONFIG_EROFS_FS_XATTR
-	if (test_opt(sbi, XATTR_USER))
+	if (test_opt(ctx, XATTR_USER))
 		seq_puts(seq, ",user_xattr");
 	else
 		seq_puts(seq, ",nouser_xattr");
 #endif
 #ifdef CONFIG_EROFS_FS_POSIX_ACL
-	if (test_opt(sbi, POSIX_ACL))
+	if (test_opt(ctx, POSIX_ACL))
 		seq_puts(seq, ",acl");
 	else
 		seq_puts(seq, ",noacl");
 #endif
 #ifdef CONFIG_EROFS_FS_ZIP
-	if (sbi->cache_strategy == EROFS_ZIP_CACHE_DISABLED) {
+	if (ctx->cache_strategy == EROFS_ZIP_CACHE_DISABLED)
 		seq_puts(seq, ",cache_strategy=disabled");
-	} else if (sbi->cache_strategy == EROFS_ZIP_CACHE_READAHEAD) {
+	else if (ctx->cache_strategy == EROFS_ZIP_CACHE_READAHEAD)
 		seq_puts(seq, ",cache_strategy=readahead");
-	} else if (sbi->cache_strategy == EROFS_ZIP_CACHE_READAROUND) {
+	else if (ctx->cache_strategy == EROFS_ZIP_CACHE_READAROUND)
 		seq_puts(seq, ",cache_strategy=readaround");
-	}
 #endif
 	return 0;
-}
-
-static int erofs_remount(struct super_block *sb, int *flags, char *data)
-{
-	struct erofs_sb_info *sbi = EROFS_SB(sb);
-	unsigned int org_mnt_opt = sbi->mount_opt;
-	int err;
-
-	DBG_BUGON(!sb_rdonly(sb));
-	err = erofs_parse_options(sb, data);
-	if (err)
-		goto out;
-
-	if (test_opt(sbi, POSIX_ACL))
-		sb->s_flags |= SB_POSIXACL;
-	else
-		sb->s_flags &= ~SB_POSIXACL;
-
-	*flags |= SB_RDONLY;
-	return 0;
-out:
-	sbi->mount_opt = org_mnt_opt;
-	return err;
 }
 
 const struct super_operations erofs_sops = {
 	.put_super = erofs_put_super,
 	.alloc_inode = erofs_alloc_inode,
-	.destroy_inode = destroy_inode,
 	.statfs = erofs_statfs,
 	.show_options = erofs_show_options,
-	.remount_fs = erofs_remount,
 };
 
 module_init(erofs_module_init);

@@ -272,3 +272,4 @@ obj-$(CONFIG_PARMAN) += parman.o
 obj-$(CONFIG_VMALLOC_DEBUG) += memleak_debug_stackdepot.o
 # endif
 obj-y += crypto/
+obj-y += xarray.o
