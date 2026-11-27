@@ -1193,9 +1193,10 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 	memcpy(&tmp, utsname(), sizeof(tmp));
 	up_read(&uts_sem);
 
-	/* ColorOS 17 (Android 17) GSI bpfloader/libbpf reject kernels below
-	 * 5.10. Report a modern release so the kver checks are satisfied. */
-	strlcpy(tmp.release, "6.1.0-gsi", sizeof(tmp.release));
+	/* Android 16 (25Q2+) GSI's netbpfload requires a 5.10+ LTS kernel.
+	 * Report a known-good LTS release so the version gate is satisfied.
+	 */
+	strlcpy(tmp.release, "5.10.199-gsi", sizeof(tmp.release));
 
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;
@@ -1222,9 +1223,10 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 	memcpy(&tmp, utsname(), sizeof(tmp));
 	up_read(&uts_sem);
 
-	/* ColorOS 17 (Android 17) GSI bpfloader/libbpf reject kernels below
-	 * 5.10. Report a modern release so the kver checks are satisfied. */
-	strlcpy(tmp.release, "6.1.0-gsi", sizeof(tmp.release));
+	/* Android 16 (25Q2+) GSI's netbpfload requires a 5.10+ LTS kernel.
+	 * Report a known-good LTS release so the version gate is satisfied.
+	 */
+	strlcpy(tmp.release, "5.10.199-gsi", sizeof(tmp.release));
 
 	if (copy_to_user(name, &tmp, sizeof(tmp)))
 		return -EFAULT;
